@@ -32,3 +32,13 @@
     @apply bg-brand-white text-brand-gray-900 antialiased;
   }
 }
+
+@media print {
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}

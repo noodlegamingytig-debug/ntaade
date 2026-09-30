@@ -151,6 +151,31 @@ export type ItemsPublicRow = {
   expires_at: string | null
 }
 
+export type AdminOrderItem = {
+  item_id: string
+  title: string
+  price: number
+  vendor: string | null
+}
+
+export type AdminOrder = {
+  id: string
+  created_at: string
+  status: OrderStatus
+  payment_reference: string | null
+  promo_code: string | null
+  subtotal_ghs: number
+  discount_total_ghs: number
+  delivery_fee_ghs: number
+  total_ghs: number
+  hold_expires_at: string
+  batch_id: string
+  student_name: string | null
+  student_phone: string | null
+  student_email: string | null
+  items: AdminOrderItem[]
+}
+
 // --- Assembled Database type, for createClient<Database>(). ---
 
 type TableDef<Row, InsertExtra extends keyof Row = never> = {
@@ -219,6 +244,43 @@ export interface Database {
       cancel_order: {
         Args: { p_order_id: string }
         Returns: undefined
+      }
+      admin_list_orders: {
+        Args: { p_batch_id?: string | null; p_status?: string | null }
+        Returns: AdminOrder[]
+      }
+      admin_set_order_status: {
+        Args: { p_order_id: string; p_status: OrderStatus }
+        Returns: undefined
+      }
+      admin_reject_payment: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      admin_delete_category: {
+        Args: { p_category_id: string; p_reassign_to?: string | null }
+        Returns: undefined
+      }
+      admin_apply_percent_discount: {
+        Args: { p_item_ids: string[]; p_percent: number; p_ends_at?: string | null }
+        Returns: number
+      }
+      admin_preview_promotion: {
+        Args: {
+          p_type: PromotionType
+          p_value: number
+          p_scope: PromotionScope
+          p_category_id?: string | null
+          p_item_ids?: string[] | null
+        }
+        Returns: {
+          item_id: string
+          title: string
+          base_price_ghs: number
+          current_price_ghs: number
+          promo_price_ghs: number
+          beats_current: boolean
+        }[]
       }
       get_effective_prices: {
         Args: { p_item_ids: string[]; p_promo_code?: string | null }

@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export function Header({ searchValue, onSearch }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-20 border-b border-brand-gray-200 bg-white">
+    <header className="print:hidden sticky top-0 z-20 border-b border-brand-gray-200 bg-white">
       {/* Desktop: wordmark, search, account, cart all in one row.
           Mobile: wordmark/account/cart on top, search bar on its own row below. */}
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:flex-nowrap">
