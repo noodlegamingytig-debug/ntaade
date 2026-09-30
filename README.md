@@ -1,129 +1,181 @@
 # Ntaade
 
-Mobile-first web app for Ashesi University students to browse and order
-affordable second-hand clothing sourced from local market vendors. Students
-never see or contact vendors directly — the admin (you) is the middleman.
+Mobile-first web app where Ashesi students browse and order affordable
+second-hand clothing sourced from local market vendors. Students never see or
+contact vendors: the admin (you) is the middleman. You list the stock, students
+order, you collect payment by mobile money and hand the clothes over at pickup.
 
-**Stack:** React + Vite + TypeScript, Tailwind CSS, React Router · Supabase
-(Postgres, Auth, Storage, RLS) · Netlify hosting. Everything runs on the
-Supabase and Netlify free tiers.
+**Stack:** React + Vite + TypeScript, Tailwind CSS, React Router (hash routing) ·
+Supabase (Postgres, Auth, Storage, Row Level Security) · Netlify. Everything runs
+on free tiers.
 
-**Status:** Phase 1 (database & security) complete. See the phase plan
-below.
+**Status:** all four phases are built.
 
-## Phase plan
+1. Database, security, categories, promotions, settings, checkout function
+2. Branding, layout, public browsing (filters, search, product pages)
+3. Guest cart, email-code sign-in, checkout, student orders
+4. Admin area: orders, items, categories, promotions, settings, batches, pickup list
 
-1. **Database, security, categories, promotions, settings, checkout function** — done.
-2. Branding, layout, and the public browsing experience (filters, search).
-3. Cart, sign-in, checkout, and student order pages.
-4. Admin area: items, categories, promotions, settings, orders, batches.
+---
 
-Each phase stops for review before moving to the next.
-
-## Phase 1 setup
-
-Follow these steps to get the database running before Phase 2 lands.
+## Setup (do these once, in order)
 
 ### 1. Create the Supabase project
-
-1. Go to [supabase.com](https://supabase.com) and create a new project (free tier).
-2. Pick a database password and save it somewhere safe — you won't need it for this app (we only use the anon key), but you'll want it if you ever connect a Postgres client directly.
-3. Wait for provisioning to finish, then open the project.
+Create a free project at [supabase.com](https://supabase.com). From
+**Project Settings → API** you need the *Project URL* and the *anon public* key.
+Never put the `service_role` key anywhere in this app.
 
 ### 2. Run the migrations
+In **SQL Editor**, open each file in `supabase/migrations/` **in order** and run it.
+They are written to be safe to re-run, except the seed.
 
-The SQL editor is the easiest path (no CLI required):
+| File | What it does |
+| --- | --- |
+| `0001_auth_restriction.sql` | Only `@ashesi.edu.gh` emails can sign up (enforced in the database). |
+| `0002`–`0004` | Tables: profiles, vendors, categories, items, images, batches, orders, cart, promotions, settings. |
+| `0005_public_items_view.sql` | The `items_public` view students browse through (never exposes the vendor). |
+| `0006_rls_policies.sql` | Row Level Security on every table. |
+| `0007_functions.sql` | Server-side pricing and the atomic `checkout()`. |
+| `0008_seed.sql` | Sample categories, items, a batch and a promotion. **Skip this if you want a clean shop**, or delete the sample items later. Running it twice duplicates the items. |
+| `0009_grants.sql` | Explicit anon/authenticated grants. |
+| `0010_phase3_cart_payments_security.sql` | **Security fix** (stops a student promoting themselves to admin), cart pricing, promo codes, payment reference and cancel functions. |
+| `0011_phase4_admin.sql` | Admin functions (order status changes, category delete, bulk discount, promotion preview) and the **`item-images` storage bucket with admin-only upload rules**. |
 
-1. In the Supabase dashboard, go to **SQL Editor**.
-2. Open each file in `supabase/migrations/`, **in order** (0001 through 0009), paste its contents into a new query, and run it.
-   - `0001_auth_restriction.sql` — restricts signups to `@ashesi.edu.gh` emails at the database level.
-   - `0002_core_tables.sql` — profiles, vendors, categories, items, item_images, order_batches.
-   - `0003_orders_cart.sql` — orders, order_items, cart_items.
-   - `0004_promotions_settings.sql` — promotions, settings.
-   - `0005_public_items_view.sql` — the `items_public` view students browse through (never exposes `vendor_id`).
-   - `0006_rls_policies.sql` — Row Level Security on every table.
-   - `0007_functions.sql` — pricing (`get_effective_prices`), `checkout()`, and hold-expiry logic.
-   - `0008_seed.sql` — ~15 sample items, categories, a vendor, an open pickup batch, and a sample promotion, so you can test the UI without real stock.
-   - `0009_grants.sql` — explicit `anon`/`authenticated` grants (belt-and-suspenders alongside Supabase's default privileges).
-3. Each file should run with no errors. If one fails partway through, fix the reported issue and re-run just that file — they're written to be safe to re-run (`create or replace`, `if not exists`, `on conflict do nothing`), with the exception of the seed data, which will insert duplicate sample items if run twice. If you need to re-seed, delete the existing seed rows first or just skip re-running `0008`.
+> If you ran 0001–0009 earlier, you must still run **0010 and 0011**. Until 0010
+> is run, any signed-in student could give themselves admin rights.
 
-**About `pg_cron`:** `0007_functions.sql` tries to schedule a job that
-releases expired 24-hour holds every 15 minutes. `pg_cron` isn't on every
-Supabase free-tier project — the migration checks for it and skips
-gracefully (with a notice) if it's unavailable. Either way, holds are also
-released lazily at the start of every `checkout()` call, so expiry is
-always correct even without the cron job; the cron job just means stale
-reservations free up promptly instead of only when someone next checks out.
+`pg_cron` is optional. If your project has it, 0007 schedules a job that frees
+expired 24-hour holds; without it, holds are freed the next time anyone checks out or submits
+a payment reference. Either way the result is correct.
 
-### 3. Set up Storage
+### 3. Email sign-in codes (important)
+Students sign in by typing a **6-digit code** from an email (no links, no passwords).
+Supabase's default email templates send a *link*, so change them:
 
-Item photos are stored in Supabase Storage, not the database.
+1. **Authentication → Emails → Templates**
+2. Open **Magic Link** and replace the body with something like:
+   ```html
+   <h2>Your Ntaade code</h2>
+   <p>Enter this code to sign in: <strong>{{ .Token }}</strong></p>
+   ```
+3. Do the same for **Confirm signup** (first-time sign-ins use this one).
+4. **Authentication → Providers → Email**: keep *Confirm email* on, and set the
+   OTP length to 6 if it is configurable.
 
-1. Go to **Storage** in the dashboard and create a bucket named `item-images`.
-2. Make it a **public** bucket (product photos are meant to be publicly viewable — this is standard for a storefront and doesn't expose anything sensitive).
-3. Add a storage policy so only admins can upload/delete, since students never manage listings. In **Storage → Policies** for `item-images`, add:
-   - **SELECT**: allow `public` (anyone can view images) — or leave it open since the bucket itself is public.
-   - **INSERT/UPDATE/DELETE**: restrict to authenticated users where `public.is_admin()` (the same helper function migration `0006` created) returns true. Example policy expression: `public.is_admin()`.
+**Email sending limits:** Supabase's built-in email sender only allows a handful of
+emails per hour. That is fine for testing but will lock students out once real
+people use it. Before launch, add free custom SMTP under
+**Authentication → SMTP Settings** (Resend, Brevo and similar all have free tiers).
+If a student says "no code arrived", this is the first thing to check.
 
-Seed data (`0008_seed.sql`) uses placeholder image URLs (picsum.photos)
-rather than real Storage paths, so the catalog has something to render
-before you upload real photos. The image component built in Phase 2 will
-render a `storage_path` directly when it starts with `http`, and resolve
-it against this bucket's public URL otherwise — so once you upload real
-photos and use their Storage paths, everything switches over automatically.
+### 4. Environment variables
+Copy `.env.example` to `.env` and fill in:
 
-### 4. Create your first admin user
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-1. Sign up through the app once it's deployed (or via **Authentication → Users → Add user** in the dashboard) with an `@ashesi.edu.gh` email. This auto-creates a matching row in `profiles` with `role = 'student'`.
-2. In the **SQL Editor**, promote yourself:
+The anon key is designed to be public (it ships inside the site); Row Level
+Security is what protects the data.
+
+### 5. Create your first admin
+1. Open the app and sign in once with your `@ashesi.edu.gh` email.
+2. In the SQL Editor run:
    ```sql
    update public.profiles set role = 'admin' where id =
      (select id from auth.users where email = 'you@ashesi.edu.gh');
    ```
-3. You now have admin access (once the Phase 4 admin UI exists — for now this just sets the flag RLS checks).
+3. Reload the app. An **Admin** link appears in your account menu.
 
-### 5. Configure environment variables
+Roles can only be changed this way, from the SQL editor. The app itself cannot
+promote anyone.
 
-1. Copy `.env.example` to `.env`.
-2. In the Supabase dashboard, go to **Project Settings → API** and copy:
-   - **Project URL** → `VITE_SUPABASE_URL`
-   - **anon public** key → `VITE_SUPABASE_ANON_KEY`
-3. **Never** copy the `service_role` key into this file or anywhere in the frontend — it bypasses RLS entirely.
+### 6. Set your payment details
+Sign in → **Admin → Settings** and enter your MoMo network, number, account name and
+the delivery fee. Students see these at checkout. (Until you do, they see a placeholder.)
 
-### 6. Run locally
+---
+
+## Testing and deploying
+
+The app builds to **one self-contained file**, `dist/index.html` (CSS and JS
+inlined), and uses hash URLs (`index.html#/cart`). That means:
+
+- **Test locally** by double-clicking `dist/index.html`. It talks straight to your
+  Supabase project.
+- **Deploy** by dragging the `dist` folder (or a zip of it) onto Netlify's
+  drag-and-drop deploy page. No build step on Netlify, so no build minutes used.
 
 ```bash
 npm install
-npm run dev
+npm run build      # produces dist/index.html
+npm run lint
+npm run dev        # optional: live-reload dev server
 ```
 
-You should see a "Connected — N available items in the catalog" message,
-confirming the anon key can read `items_public` and RLS is set up
-correctly.
+The `.env` values are baked in at build time, so rebuild after changing them.
+If you connect the GitHub repo to Netlify instead, add the same two variables under
+*Site configuration → Environment variables*; `netlify.toml` already has the build
+command and SPA redirect.
 
-### 7. Deploy to Netlify
+---
 
-1. Push this repo to GitHub (or your git host of choice).
-2. In Netlify, **Add new site → Import an existing project**, pick the repo.
-3. Build settings are already in `netlify.toml` (`npm run build`, publish `dist`), so you shouldn't need to change anything.
-4. In **Site configuration → Environment variables**, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` with the same values as your `.env`.
-5. Deploy. The SPA redirect in `netlify.toml` means client-side routing (added in Phase 2) will work correctly on refresh/direct links.
+## Using the admin area (`/#/admin`)
 
-## Project structure
+- **Overview**: what needs attention (payments to confirm, paid orders to deliver).
+- **Orders**: tabs for *To confirm*, *Awaiting payment*, *Paid*, *Delivered*,
+  *Cancelled / refunded*. For a payment, compare the student's MoMo reference with
+  your MoMo statement, then **Confirm payment** (items become sold) or **Reject
+  reference** (they can resubmit). Also: mark delivered, cancel (items go back on
+  sale), refund, and restore an expired order if the items are still free.
+- **Items**: one table. Edit price, sale price, status and category inline. Tick rows
+  for bulk actions: percentage discount (0% removes it), mark unavailable, hide,
+  change category. Items already in an order are never touched by bulk actions.
+  **+ Add item** takes multiple photos, shrinks each under 300 KB in your browser
+  before upload, and lets you order them (first = cover). Type a new vendor code to
+  create a vendor; vendors are never visible to students.
+- **Batches**: create a pickup run (closing time, date, place), close or reopen it.
+  **Pickup list** is a printable sheet of paid orders with a per-vendor sourcing list.
+- **Categories**: add, rename, reorder, hide, delete. Deleting a category that has
+  items makes you choose where they move.
+- **Promotions**: percent or fixed amount, for everything, a category or chosen
+  items, optional code, optional schedule, pause / end now. **Preview** shows exactly
+  which items change price before you save.
+- **Settings**: delivery fee and payment instructions.
+
+## How the money side works
+
+No payment gateway yet. At checkout the order reserves the items for 24 hours. The
+student sends mobile money, types the transaction reference on their order page, and
+you confirm it in Admin → Orders. An order with a submitted reference is never
+auto-expired, so nobody loses a piece they already paid for. Each reference can only
+be used once. `PaymentInstructions.tsx` and the `submit_payment_reference` /
+`admin_set_order_status` functions are the seam to replace with Paystack or Hubtel later.
+
+## Decisions worth knowing
+
+- **Best deal wins, no stacking.** An item's own sale price, an automatic promotion and
+  an entered code are compared and the lowest price is used. To change that, edit
+  `compute_item_price()` in `0007_functions.sql`.
+- **Prices are computed on the server** and stored on each order line; the browser never
+  sends a price.
+- **Refund after delivery keeps the item marked sold** (it has left; relist it by hand if
+  it comes back). Refunding or cancelling before delivery puts the item back on sale.
+- **Vendors and raw items are admin-only** at the database level. Students read only the
+  `items_public` view.
+- **Seed photos are placeholder URLs**; real photos go in the `item-images` bucket via the
+  item editor.
+- **Guest cart** lives in the browser and is merged into your account cart when you sign in.
+  Nothing is reserved until checkout.
+
+## Project layout
 
 ```
-supabase/migrations/   All schema changes — run in order in the SQL editor.
-src/lib/                Supabase client and other shared utilities.
-src/theme/              Tailwind brand tokens (red/white, per the addendum).
-src/components/         Shared, mostly presentational UI pieces.
-src/features/           One folder per app area (catalog, cart, checkout,
-                         orders, auth, admin/*) — built out phase by phase.
-src/types/database.ts   Hand-authored Supabase types; regenerate via the
-                         Supabase CLI once you have a live project.
+supabase/migrations/    Every schema change, run in order in the SQL editor.
+src/lib/                Supabase client, formatting, image compression, helpers.
+src/theme/              Tailwind brand tokens (brand red, white, neutral grays).
+src/components/         Shared UI (layout, filters, product cards, toasts).
+src/features/           auth, cart, catalog, checkout, orders, product, admin/*
+src/types/database.ts   Hand-written Supabase types (regenerate with the Supabase CLI if you like).
 ```
-
-## Notes on decisions made in Phase 1
-
-- **"Best deal wins," not stacking.** An item's own sale price, an automatic promotion, and an entered promo code are compared and the lowest price is used — they don't combine. If you'd rather they stack, that's a straightforward change to `compute_item_price()` in `0007_functions.sql` — flag it and we'll revisit.
-- **Seed images are external placeholder URLs**, not real Storage paths (see the Storage section above) — purely so the catalog isn't empty before you've uploaded real photos.
-- **`vendors` and `items` are admin-only tables at the RLS level.** Students only ever read through `items_public`, which is owned by the migration role and so reads through Postgres's normal view-ownership behavior rather than being blocked by the items table's own RLS — this is what lets it deliberately show a filtered, vendor-free subset of a table students otherwise can't touch at all.
