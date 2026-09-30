@@ -1,0 +1,34 @@
+@import 'tailwindcss';
+
+/*
+  Ntaade brand tokens.
+  Red is the ONLY accent color — primary buttons, sale badges, cart count,
+  key accents. Do not add other accent colors; use the neutral grays below
+  for everything else.
+*/
+@theme {
+  --color-brand-red: #d71920;
+  --color-brand-red-dark: #a8141a;
+  --color-brand-red-light: #fbe9ea;
+
+  --color-brand-white: #ffffff;
+
+  --color-brand-gray-50: #fafafa;
+  --color-brand-gray-100: #f4f4f5;
+  --color-brand-gray-200: #e4e4e7;
+  --color-brand-gray-300: #d4d4d8;
+  --color-brand-gray-400: #a1a1aa;
+  --color-brand-gray-500: #71717a;
+  --color-brand-gray-600: #52525b;
+  --color-brand-gray-700: #3f3f46;
+  --color-brand-gray-800: #27272a;
+  --color-brand-gray-900: #18181b;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-white text-brand-gray-900 antialiased;
+  }
+}
