@@ -1,8 +1,9 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Breadcrumbs } from '../../components/ui/Breadcrumbs'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { ImageGallery } from '../../components/product/ImageGallery'
 import { Measurements } from '../../components/product/Measurements'
+import { useCart } from '../../hooks/useCart'
 import { useToast } from '../../hooks/useToast'
 import { CONDITION_EXPLANATIONS, CONDITION_LABELS } from '../../lib/conditionGrades'
 import { formatGhs, percentOff } from '../../lib/format'
@@ -12,6 +13,19 @@ export function ProductPage() {
   const { id } = useParams<{ id: string }>()
   const { item, images, loading, error, notFound } = useProduct(id)
   const { showToast } = useToast()
+  const cart = useCart()
+  const navigate = useNavigate()
+
+  async function addToCart(thenCheckout: boolean) {
+    if (!item) return
+    try {
+      await cart.add(item.id)
+      if (thenCheckout) navigate('/checkout')
+      else showToast('Added to cart')
+    } catch {
+      showToast('Could not add to cart. Please try again.')
+    }
+  }
 
   if (loading) {
     return (
@@ -123,16 +137,25 @@ export function ProductPage() {
           )}
 
           <div className="mt-6 flex gap-2">
+            {cart.has(item.id) ? (
+              <Link
+                to="/cart"
+                className="flex-1 rounded-full border border-brand-red bg-brand-red-light py-2.5 text-center text-sm font-semibold text-brand-red-dark"
+              >
+                In your cart · View
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => addToCart(false)}
+                className="flex-1 rounded-full border border-brand-red py-2.5 text-sm font-semibold text-brand-red hover:bg-brand-red-light"
+              >
+                Add to cart
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => showToast('Cart & checkout arrive in Phase 3.')}
-              className="flex-1 rounded-full border border-brand-red py-2.5 text-sm font-semibold text-brand-red hover:bg-brand-red-light"
-            >
-              Add to cart
-            </button>
-            <button
-              type="button"
-              onClick={() => showToast('Cart & checkout arrive in Phase 3.')}
+              onClick={() => addToCart(true)}
               className="flex-1 rounded-full bg-brand-red py-2.5 text-sm font-semibold text-white hover:bg-brand-red-dark"
             >
               Buy now

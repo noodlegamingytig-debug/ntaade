@@ -193,6 +193,33 @@ export interface Database {
           hold_expires_at: string
         }[]
       }
+      get_cart_lines: {
+        Args: { p_item_ids: string[]; p_promo_code?: string | null }
+        Returns: {
+          item_id: string
+          title: string
+          size: string | null
+          condition_grade: ConditionGrade
+          is_available: boolean
+          image_path: string | null
+          base_price_ghs: number
+          unit_price_ghs: number
+          discount_ghs: number
+          promo_name: string | null
+        }[]
+      }
+      check_promo_code: {
+        Args: { p_code: string }
+        Returns: { promo_name: string }[]
+      }
+      submit_payment_reference: {
+        Args: { p_order_id: string; p_reference: string }
+        Returns: undefined
+      }
+      cancel_order: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
       get_effective_prices: {
         Args: { p_item_ids: string[]; p_promo_code?: string | null }
         Returns: {

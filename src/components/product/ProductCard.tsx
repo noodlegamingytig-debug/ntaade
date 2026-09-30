@@ -2,11 +2,23 @@ import { Link } from 'react-router-dom'
 import { CONDITION_LABELS } from '../../lib/conditionGrades'
 import { formatGhs, percentOff } from '../../lib/format'
 import { resolveImageUrl } from '../../lib/imageUrl'
+import { useCart } from '../../hooks/useCart'
 import { useToast } from '../../hooks/useToast'
 import type { CatalogItem } from '../../types/catalog'
 
 export function ProductCard({ item }: { item: CatalogItem }) {
   const { showToast } = useToast()
+  const cart = useCart()
+  const inCart = cart.has(item.id)
+
+  async function addToCart() {
+    try {
+      await cart.add(item.id)
+      showToast('Added to cart')
+    } catch {
+      showToast('Could not add to cart. Please try again.')
+    }
+  }
   const isDiscounted = item.discountGhs > 0.001
   const off = isDiscounted ? percentOff(item.basePriceGhs, item.unitPriceGhs) : 0
 
@@ -49,13 +61,22 @@ export function ProductCard({ item }: { item: CatalogItem }) {
           </p>
         </div>
       </Link>
-      <button
-        type="button"
-        onClick={() => showToast('Cart & checkout arrive in Phase 3.')}
-        className="mt-2 w-full rounded-full border border-brand-gray-200 py-1.5 text-xs font-medium text-brand-gray-700 transition-colors hover:border-brand-red hover:text-brand-red"
-      >
-        Add to cart
-      </button>
+      {inCart ? (
+        <Link
+          to="/cart"
+          className="mt-2 block w-full rounded-full border border-brand-red bg-brand-red-light py-1.5 text-center text-xs font-medium text-brand-red-dark"
+        >
+          In cart · View
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={addToCart}
+          className="mt-2 w-full rounded-full border border-brand-gray-200 py-1.5 text-xs font-medium text-brand-gray-700 transition-colors hover:border-brand-red hover:text-brand-red"
+        >
+          Add to cart
+        </button>
+      )}
     </div>
   )
 }
