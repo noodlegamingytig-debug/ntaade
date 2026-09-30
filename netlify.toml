@@ -1,6 +1,6 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
+# Deploy by drag-and-drop only (no Netlify build minutes used).
+# Build locally with `npm run build`, then upload dist/index.html (or the zip).
+# Do NOT connect this repo to Netlify's continuous deployment: every push would spend build minutes.
 
 [[redirects]]
   from = "/*"

@@ -97,8 +97,8 @@ inlined), and uses hash URLs (`index.html#/cart`). That means:
 
 - **Test locally** by double-clicking `dist/index.html`. It talks straight to your
   Supabase project.
-- **Deploy** by dragging the `dist` folder (or a zip of it) onto Netlify's
-  drag-and-drop deploy page. No build step on Netlify, so no build minutes used.
+- **Deploy** by dragging `index.html` (or the zip) onto your site's *Deploys* page on Netlify.
+  There is no build step on Netlify, so no build minutes are used.
 
 ```bash
 npm install
@@ -108,9 +108,11 @@ npm run dev        # optional: live-reload dev server
 ```
 
 The `.env` values are baked in at build time, so rebuild after changing them.
-If you connect the GitHub repo to Netlify instead, add the same two variables under
-*Site configuration → Environment variables*; `netlify.toml` already has the build
-command and SPA redirect.
+
+**Do not connect this repo to Netlify's Git deploys.** Every push would trigger a build and
+spend build minutes. Deploy only by uploading the built file (drag-and-drop, or the zip).
+If a Netlify site is already linked to the repo, turn it off under
+*Site configuration → Build & deploy → Continuous deployment → Stop builds*.
 
 ---
 
