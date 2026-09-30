@@ -18,174 +18,167 @@ export type ProfileRole = 'student' | 'admin'
 export type PromotionType = 'percent' | 'fixed'
 export type PromotionScope = 'all' | 'category' | 'items'
 
+// --- Row shapes, defined standalone (not self-referencing Database) so
+// TypeScript can resolve them without a circular-lookup problem. ---
+
+export type ProfileRow = {
+  id: string
+  full_name: string | null
+  phone: string | null
+  role: ProfileRole
+  created_at: string
+}
+
+export type VendorRow = {
+  id: string
+  code_name: string
+  notes: string | null
+  created_at: string
+}
+
+export type CategoryRow = {
+  id: string
+  name: string
+  slug: string
+  parent_id: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+}
+
+export type ItemRow = {
+  id: string
+  vendor_id: string | null
+  title: string
+  description: string | null
+  category_id: string | null
+  department: Department
+  size: string | null
+  measurements: Record<string, number | string>
+  condition_grade: ConditionGrade
+  base_price_ghs: number
+  sale_price_ghs: number | null
+  sale_starts_at: string | null
+  sale_ends_at: string | null
+  status: ItemStatus
+  created_at: string
+  expires_at: string | null
+}
+
+export type ItemImageRow = {
+  id: string
+  item_id: string
+  storage_path: string
+  position: number
+}
+
+export type OrderBatchRow = {
+  id: string
+  closes_at: string
+  delivery_date: string | null
+  pickup_point: string | null
+  status: BatchStatus
+  created_at: string
+}
+
+export type OrderRow = {
+  id: string
+  student_id: string
+  batch_id: string
+  subtotal_ghs: number
+  discount_total_ghs: number
+  delivery_fee_ghs: number
+  total_ghs: number
+  status: OrderStatus
+  payment_reference: string | null
+  promo_code: string | null
+  hold_expires_at: string
+  created_at: string
+}
+
+export type OrderItemRow = {
+  id: string
+  order_id: string
+  item_id: string
+  price_paid_ghs: number
+  title_snapshot: string
+}
+
+export type CartItemRow = {
+  id: string
+  student_id: string
+  item_id: string
+  added_at: string
+}
+
+export type PromotionRow = {
+  id: string
+  name: string
+  type: PromotionType
+  value: number
+  scope: PromotionScope
+  scope_category_id: string | null
+  scope_item_ids: string[] | null
+  code: string | null
+  starts_at: string | null
+  ends_at: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export type SettingRow = {
+  key: string
+  value: unknown
+  updated_at: string
+}
+
+export type ItemsPublicRow = {
+  id: string
+  title: string
+  description: string | null
+  category_id: string | null
+  category_name: string | null
+  category_slug: string | null
+  department: Department
+  size: string | null
+  measurements: Record<string, number | string>
+  condition_grade: ConditionGrade
+  base_price_ghs: number
+  current_price_ghs: number
+  is_on_sale: boolean
+  status: ItemStatus
+  created_at: string
+  expires_at: string | null
+}
+
+// --- Assembled Database type, for createClient<Database>(). ---
+
+type TableDef<Row, InsertExtra extends keyof Row = never> = {
+  Row: Row
+  Insert: Partial<Row> & Pick<Row, InsertExtra>
+  Update: Partial<Row>
+  Relationships: []
+}
+
 export interface Database {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          full_name: string | null
-          phone: string | null
-          role: ProfileRole
-          created_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { id: string }
-        Update: Partial<Database['public']['Tables']['profiles']['Row']>
-      }
-      vendors: {
-        Row: {
-          id: string
-          code_name: string
-          notes: string | null
-          created_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['vendors']['Row']>
-        Update: Partial<Database['public']['Tables']['vendors']['Row']>
-      }
-      categories: {
-        Row: {
-          id: string
-          name: string
-          slug: string
-          parent_id: string | null
-          sort_order: number
-          is_active: boolean
-          created_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['categories']['Row']>
-        Update: Partial<Database['public']['Tables']['categories']['Row']>
-      }
-      items: {
-        Row: {
-          id: string
-          vendor_id: string | null
-          title: string
-          description: string | null
-          category_id: string | null
-          department: Department
-          size: string | null
-          measurements: Record<string, number | string>
-          condition_grade: ConditionGrade
-          base_price_ghs: number
-          sale_price_ghs: number | null
-          sale_starts_at: string | null
-          sale_ends_at: string | null
-          status: ItemStatus
-          created_at: string
-          expires_at: string | null
-        }
-        Insert: Partial<Database['public']['Tables']['items']['Row']>
-        Update: Partial<Database['public']['Tables']['items']['Row']>
-      }
-      item_images: {
-        Row: {
-          id: string
-          item_id: string
-          storage_path: string
-          position: number
-        }
-        Insert: Partial<Database['public']['Tables']['item_images']['Row']>
-        Update: Partial<Database['public']['Tables']['item_images']['Row']>
-      }
-      order_batches: {
-        Row: {
-          id: string
-          closes_at: string
-          delivery_date: string | null
-          pickup_point: string | null
-          status: BatchStatus
-          created_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['order_batches']['Row']>
-        Update: Partial<Database['public']['Tables']['order_batches']['Row']>
-      }
-      orders: {
-        Row: {
-          id: string
-          student_id: string
-          batch_id: string
-          subtotal_ghs: number
-          discount_total_ghs: number
-          delivery_fee_ghs: number
-          total_ghs: number
-          status: OrderStatus
-          payment_reference: string | null
-          promo_code: string | null
-          hold_expires_at: string
-          created_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['orders']['Row']>
-        Update: Partial<Database['public']['Tables']['orders']['Row']>
-      }
-      order_items: {
-        Row: {
-          id: string
-          order_id: string
-          item_id: string
-          price_paid_ghs: number
-          title_snapshot: string
-        }
-        Insert: Partial<Database['public']['Tables']['order_items']['Row']>
-        Update: Partial<Database['public']['Tables']['order_items']['Row']>
-      }
-      cart_items: {
-        Row: {
-          id: string
-          student_id: string
-          item_id: string
-          added_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['cart_items']['Row']>
-        Update: Partial<Database['public']['Tables']['cart_items']['Row']>
-      }
-      promotions: {
-        Row: {
-          id: string
-          name: string
-          type: PromotionType
-          value: number
-          scope: PromotionScope
-          scope_category_id: string | null
-          scope_item_ids: string[] | null
-          code: string | null
-          starts_at: string | null
-          ends_at: string | null
-          is_active: boolean
-          created_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['promotions']['Row']>
-        Update: Partial<Database['public']['Tables']['promotions']['Row']>
-      }
-      settings: {
-        Row: {
-          key: string
-          value: unknown
-          updated_at: string
-        }
-        Insert: Partial<Database['public']['Tables']['settings']['Row']> & { key: string }
-        Update: Partial<Database['public']['Tables']['settings']['Row']>
-      }
+      profiles: TableDef<ProfileRow, 'id'>
+      vendors: TableDef<VendorRow>
+      categories: TableDef<CategoryRow>
+      items: TableDef<ItemRow>
+      item_images: TableDef<ItemImageRow>
+      order_batches: TableDef<OrderBatchRow>
+      orders: TableDef<OrderRow>
+      order_items: TableDef<OrderItemRow>
+      cart_items: TableDef<CartItemRow>
+      promotions: TableDef<PromotionRow>
+      settings: TableDef<SettingRow, 'key'>
     }
     Views: {
       items_public: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          category_id: string | null
-          category_name: string | null
-          category_slug: string | null
-          department: Department
-          size: string | null
-          measurements: Record<string, number | string>
-          condition_grade: ConditionGrade
-          base_price_ghs: number
-          current_price_ghs: number
-          is_on_sale: boolean
-          status: ItemStatus
-          created_at: string
-          expires_at: string | null
-        }
+        Row: ItemsPublicRow
+        Relationships: []
       }
     }
     Functions: {
