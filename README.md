@@ -13,7 +13,7 @@ on free tiers.
 
 1. Database, security, categories, promotions, settings, checkout function
 2. Branding, layout, public browsing (filters, search, product pages)
-3. Guest cart, email-code sign-in, checkout, student orders
+3. Guest cart, email + password sign-in, checkout, student orders
 4. Admin area: orders, items, categories, promotions, settings, batches, pickup list
 
 ---
@@ -48,25 +48,18 @@ They are written to be safe to re-run, except the seed.
 expired 24-hour holds; without it, holds are freed the next time anyone checks out or submits
 a payment reference. Either way the result is correct.
 
-### 3. Email sign-in codes (important)
-Students sign in by typing a **6-digit code** from an email (no links, no passwords).
-Supabase's default email templates send a *link*, so change them:
+### 3. Sign-in settings (email + password, no email verification)
+Students create an account with their `@ashesi.edu.gh` address and a password. No email is sent.
 
-1. **Authentication → Emails → Templates**
-2. Open **Magic Link** and replace the body with something like:
-   ```html
-   <h2>Your Ntaade code</h2>
-   <p>Enter this code to sign in: <strong>{{ .Token }}</strong></p>
-   ```
-3. Do the same for **Confirm signup** (first-time sign-ins use this one).
-4. **Authentication → Providers → Email**: keep *Confirm email* on, and set the
-   OTP length to 6 if it is configurable.
+1. **Authentication → Providers → Email**: keep Email enabled and turn **Confirm email OFF**.
+   (If it stays on, sign-up fails with a message telling you exactly this.)
+2. Only `@ashesi.edu.gh` addresses can register; the database itself rejects anything else (migration 0001).
 
-**Email sending limits:** Supabase's built-in email sender only allows a handful of
-emails per hour. That is fine for testing but will lock students out once real
-people use it. Before launch, add free custom SMTP under
-**Authentication → SMTP Settings** (Resend, Brevo and similar all have free tiers).
-If a student says "no code arrived", this is the first thing to check.
+Trade-offs of skipping verification: the app can't prove someone owns the address they type,
+and there is no "forgot password" email. To reset a password, open **Authentication → Users**,
+pick the student, and set a new one. Because anyone could register an address before its owner
+does, **create your own admin account first** (step 5). If you later want proof of ownership,
+turn "Confirm email" back on and add custom SMTP.
 
 ### 4. Environment variables
 Copy `.env.example` to `.env` and fill in:
@@ -80,7 +73,7 @@ The anon key is designed to be public (it ships inside the site); Row Level
 Security is what protects the data.
 
 ### 5. Create your first admin
-1. Open the app and sign in once with your `@ashesi.edu.gh` email.
+1. Open the app, choose **Create an account** and register with your `@ashesi.edu.gh` email and a password.
 2. In the SQL Editor run:
    ```sql
    update public.profiles set role = 'admin' where id =

@@ -9,6 +9,12 @@ function friendlyAuthError(message: string): string {
   if (/database error saving new user/i.test(message)) {
     return 'Only @ashesi.edu.gh email addresses can sign up.'
   }
+  if (/invalid login credentials/i.test(message)) {
+    return 'Wrong email or password.'
+  }
+  if (/already registered|already been registered/i.test(message)) {
+    return 'That email already has an account. Sign in instead.'
+  }
   if (/rate limit|security purposes|too many/i.test(message)) {
     return 'Too many attempts. Please wait a minute and try again.'
   }
@@ -51,23 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const profile = profileState && profileState.userId === userId ? profileState.profile : null
   const profileLoading = userId !== null && profileState?.userId !== userId
 
-  const requestCode = useCallback(async (email: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const clean = email.trim().toLowerCase()
     if (!isAshesiEmail(clean)) return 'Use your @ashesi.edu.gh email address.'
-    const { error } = await supabase.auth.signInWithOtp({
-      email: clean,
-      options: { shouldCreateUser: true },
-    })
+    const { error } = await supabase.auth.signInWithPassword({ email: clean, password })
     return error ? friendlyAuthError(error.message) : null
   }, [])
 
-  const verifyCode = useCallback(async (email: string, code: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: code.trim(),
-      type: 'email',
-    })
-    return error ? 'That code is wrong or has expired. Request a new one.' : null
+  const signUp = useCallback(async (email: string, password: string) => {
+    const clean = email.trim().toLowerCase()
+    if (!isAshesiEmail(clean)) return 'Use your @ashesi.edu.gh email address.'
+    if (password.length < 8) return 'Choose a password of at least 8 characters.'
+    const { data, error } = await supabase.auth.signUp({ email: clean, password })
+    if (error) return friendlyAuthError(error.message)
+    // With "Confirm email" switched off in Supabase, signUp returns a session straight away.
+    if (!data.session) {
+      return 'Your account was created but Supabase is still asking for email confirmation. Turn off "Confirm email" (Authentication → Providers → Email).'
+    }
+    return null
   }, [])
 
   const updateProfile = useCallback(
@@ -97,12 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       profileLoading,
-      requestCode,
-      verifyCode,
+      signIn,
+      signUp,
       updateProfile,
       signOut,
     }),
-    [session, profile, loading, profileLoading, requestCode, verifyCode, updateProfile, signOut],
+    [session, profile, loading, profileLoading, signIn, signUp, updateProfile, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -11,8 +11,8 @@ export interface AuthContextValue {
   /** True while a signed-in user's profile row is still being fetched. */
   profileLoading: boolean
   /** Each returns an error message to show, or null on success. */
-  requestCode: (email: string) => Promise<string | null>
-  verifyCode: (email: string, code: string) => Promise<string | null>
+  signIn: (email: string, password: string) => Promise<string | null>
+  signUp: (email: string, password: string) => Promise<string | null>
   updateProfile: (patch: { full_name?: string; phone?: string }) => Promise<string | null>
   signOut: () => Promise<void>
 }
